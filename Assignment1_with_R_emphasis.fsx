@@ -8,6 +8,7 @@ Environment.CurrentDirectory <- __SOURCE_DIRECTORY__
 #load @"YahooPriceLoader.fs"
 
 open System.IO
+open System.Diagnostics
 open YahooPriceLoader
 open RDotNet
 open RProvider
@@ -29,7 +30,7 @@ let plotGraph domain range xlab ylab title =
 
     let startNewRPlotWindow = R.dev_new() |> ignore  // Causes R to start a new plot window
     startNewRPlotWindow
-    let result = R.plot(
+    let result = R.plot(namedParams
                             [ 
                               p "x" domain; 
                               p "y" range; 
@@ -42,31 +43,21 @@ let plotGraph domain range xlab ylab title =
                               p "lty" 1
                             ]
                         ) 
-    R.grid(namedParams
-            [ 
-              p "nx" null; 
-              p "ny" null; 
-              p "col" "lightgray";
-              p "lty" "dotted"; 
-              p "lwd" 1.5;
-              p "equilogs" true
-            ]
-        ) |> ignore
+    R.grid(nx = null, 
+           ny = null, 
+           col ="lightgray",
+           lty = "dotted", 
+           lwd = 1.5,
+           equilogs = true) |> ignore
     result 
 
 let startDate  = new DateTime(1993, 02, 20) 
 let endDate    = new DateTime(2008, 03, 31) 
 let tickerName = "SBUX"
 
-type DateClosingtype = { Date: DateTime; ClosingPrice: float }
-
 // Retrieve monthly sbux stock prices.
 let sbuxData = (getYahooStockPrices startDate endDate Monthly tickerName).Data
-//           |> Seq.map (fun row -> { Date=row.Date; ClosingPrice=(float row.AdjClose)}) // R doesn't like decimals and has no real support for quad precision numbers
-//           |> Seq.filter (fun dp -> dp.Date >= startDate && dp.Date <= endDate)        // Filter for the date range
-//           |> Seq.sortBy (fun dp -> dp.Date)                                           // Order by date ascending.
-
-let df = R.data_frame(namedParams 
+let sbuxDf = R.data_frame(namedParams 
                         [
                             p "Date" (sbuxData |> Seq.map (fun i -> i.Date));
                             p "Open" (sbuxData |> Seq.map (fun i -> float i.Open));
@@ -76,10 +67,27 @@ let df = R.data_frame(namedParams
                             p "Volume" (sbuxData |> Seq.map (fun i -> i.Volume));
                             p "AdjClose" (sbuxData |> Seq.map (fun i -> float i.AdjClose));
                         ]
-                      )
+                      ).AsDataFrame()
 
-let result = R.print(df)                       
-printf "%A" result
+let numRows       = (R.nrow(sbuxDf).AsInteger()).[0];
+let adjClosingt   = (sbuxDf.["AdjClose"] |> Seq.skip 1 |> Seq.map (fun i -> i.    ))
+let adjClosingtm1 = sbuxDf.["AdjClose"] |> Seq.take (numRows-1)
+let Rm            = R.``-``(R.``/``(adjClosingt, adjClosingt), -1)
+
+R.print(Rm)
+
+        
+
+
+
+
+//let div = R./(adjClosing |> Seq.take (adjClosing.Length-1), 
+//              adjClosing |> Seq.skip 1)
+//R.print(div)
+
+                
+//printf "%A" (result.AsDataFrame()).Names
+//Debugger.Launch()
 
 
 // Would like to create an R data frame from the data.
