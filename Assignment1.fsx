@@ -1,4 +1,6 @@
-﻿// Set the working directory to that of the source file.  Useful when running from within FSI launched from VS
+﻿open System
+
+// Set the working directory to that of the source file.  Useful when running from within FSI launched from VS
 Environment.CurrentDirectory <- __SOURCE_DIRECTORY__
 
 #r @"lib\FSharp.Data.dll"
@@ -6,7 +8,6 @@ Environment.CurrentDirectory <- __SOURCE_DIRECTORY__
 #r @"lib\RProvider.dll"
 #load @"YahooPriceLoader.fs"
 
-open System
 open System.IO
 open YahooPriceLoader
 open RDotNet
@@ -41,16 +42,13 @@ let plotGraph domain range xlab ylab title =
                               p "lty" 1
                             ]
                         ) 
-    R.grid(namedParams
-            [ 
-              p "nx" null; 
-              p "ny" null; 
-              p "col" "lightgray";
-              p "lty" "dotted"; 
-              p "lwd" 1.5;
-              p "equilogs" true
-            ]
-        ) |> ignore
+                        
+    R.grid(nx = null, 
+           ny = null, 
+           col = "lightgray",
+           lty = "dotted", 
+           lwd = 1.5,
+           equilogs = true) |> ignore
     result 
 
 let startDate  = new DateTime(1993, 02, 20) 
